@@ -31,8 +31,10 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per hour"])
 # Instaloader initialization
 L = instaloader.Instaloader()
 
-# Multiprocessing Pool initialization
-pool = Pool(processes=4)
+### ---- FUNCTION: Lazy Pool Initialization ---- ###
+def get_pool():
+    """Lazily create and return a multiprocessing Pool."""
+    return Pool(processes=4)
 
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
@@ -120,7 +122,8 @@ def convert_video_to_mp3(video_path):
 def schedule_folder_deletion(static_folder, shortcode):
     """Schedule the deletion of both the static folder and the Instaloader shortcode folder."""
     shortcode_folder = os.path.join(shortcode)  # Instaloader folder
-    pool.apply_async(delayed_delete, args=(static_folder, shortcode_folder))
+    with get_pool() as pool:  # Lazily create a pool and ensure cleanup
+        pool.apply_async(delayed_delete, args=(static_folder, shortcode_folder))
 
 def delayed_delete(static_folder, shortcode_folder):
     """Delete the folders after a delay."""
@@ -166,6 +169,4 @@ def download_instagram_reel():
 
 ### ---- MAIN ---- ###
 if __name__ == "__main__":
-    # Ensure the multiprocessing pool is initialized in the main process
-    pool = Pool(processes=4)  # Adjust the number of processes as needed
     app.run(debug=False, use_reloader=False)
