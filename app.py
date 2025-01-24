@@ -32,7 +32,7 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per hour"])
 L = instaloader.Instaloader()
 
 # Multiprocessing Pool initialization
-pool = None
+pool = Pool(processes=4)
 
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
