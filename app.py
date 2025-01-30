@@ -9,11 +9,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
 from dotenv import load_dotenv
-from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor
 import time
-
-if not os.path.exists("static"):
-    os.makedirs("static")
 
 # Load environment variables
 load_dotenv()
@@ -23,18 +20,16 @@ VERSAL_URL = os.getenv("VERSAL_URL", "http://127.0.0.1:5000")
 
 # Flask app initialization
 app = Flask(__name__)
-##CORS(app, resources={r"/*": {"origins": VERSAL_URL}})
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": VERSAL_URL}})
+
 # Flask-Limiter for rate limiting
 limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per hour"])
 
 # Instaloader initialization
 L = instaloader.Instaloader()
 
-### ---- FUNCTION: Lazy Pool Initialization ---- ###
-def get_pool():
-    """Lazily create and return a multiprocessing Pool."""
-    return Pool(processes=4)
+# Thread-based execution to prevent high memory usage
+executor = ThreadPoolExecutor(max_workers=2)
 
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
@@ -91,8 +86,8 @@ def download_reel(url):
         new_mp3_path = os.path.join(static_folder, "audio.mp3")
         shutil.move(mp3_audio_path, new_mp3_path)
 
-        # Schedule folder deletion
-        schedule_folder_deletion(static_folder, shortcode)
+        # Schedule folder deletion (background task)
+        executor.submit(delayed_delete, static_folder, shortcode)
 
         return {
             "status": "success",
@@ -112,24 +107,19 @@ def convert_video_to_mp3(video_path):
         video = mp.VideoFileClip(video_path)
         mp3_audio_path = os.path.join(os.path.dirname(video_path), "audio.mp3")
         video.audio.write_audiofile(mp3_audio_path, codec="mp3")
-        video.reader.close()
-        video.audio.reader.close_proc()
+
+        # Clean up memory
+        video.close()
         return mp3_audio_path
     except Exception as e:
         return {"error": f"MP3 extraction failed: {str(e)}"}
 
-### ---- FUNCTION: Schedule Folder Deletion ---- ###
-def schedule_folder_deletion(static_folder, shortcode):
-    """Schedule the deletion of both the static folder and the Instaloader shortcode folder."""
-    shortcode_folder = os.path.join(shortcode)  # Instaloader folder
-    with get_pool() as pool:  # Lazily create a pool and ensure cleanup
-        pool.apply_async(delayed_delete, args=(static_folder, shortcode_folder))
-
-def delayed_delete(static_folder, shortcode_folder):
+### ---- FUNCTION: Delayed Deletion ---- ###
+def delayed_delete(static_folder, shortcode):
     """Delete the folders after a delay."""
     time.sleep(240)  # Wait for 4 minutes
     delete_folder(static_folder)
-    delete_folder(shortcode_folder)
+    delete_folder(shortcode)
 
 def delete_folder(folder_path):
     """Delete the specified folder and its contents."""
