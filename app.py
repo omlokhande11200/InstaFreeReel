@@ -20,7 +20,7 @@ VERSAL_URL = os.getenv("VERSAL_URL", "http://127.0.0.1:5000")
 
 # Flask app initialization
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": VERSAL_URL}})
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Flask-Limiter for rate limiting
 limiter = Limiter(get_remote_address, app=app, default_limits=["1000 per hour"])
