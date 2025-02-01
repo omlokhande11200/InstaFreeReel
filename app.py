@@ -67,13 +67,27 @@ def check_tor():
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
     url = url.strip()
+    print(f"Original URL: {url}")  # Debugging Log
+    
     url = url.split("?")[0]  # Remove query parameters
-    match = re.search(r"instagram\\.com/reel/([^/?#&]+)", url)
+    print(f"Cleaned URL: {url}")  # Debugging Log
+    
+    match = re.search(r"instagram\.com/reel/([^/?#&]+)", url)
+    if match:
+        print(f"Extracted Shortcode: {match.group(1)}")  # Debugging Log
+    else:
+        print("Failed to extract shortcode!")  # Debugging Log
+    
     return match.group(1) if match else None
+
 
 ### ---- FUNCTION: Validate Instagram URL ---- ###
 def is_valid_instagram_url(url):
-    return bool(re.match(r"https?://(www\\.)?instagram\\.com/reel/[\\w-]+", url))
+    print(f"Validating URL: {url}")  # Debugging Log
+    result = bool(re.match(r"https?://(www\.)?instagram\.com/reel/[\w-]+", url))
+    print(f"Validation Result: {result}")  # Debugging Log
+    return result
+
 
 ### ---- FUNCTION: Download Instagram Reel Using Tor ---- ###
 @app.route("/download/reel", methods=["GET"])
