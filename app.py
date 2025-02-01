@@ -64,8 +64,6 @@ def get_tor_ip():
 def check_tor():
     return jsonify({"Tor_IP": get_tor_ip()})
 
-log_tor_ip()
-
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
     url = url.strip()
