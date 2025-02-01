@@ -1,4 +1,4 @@
-import os
+import os 
 import glob
 import instaloader
 import moviepy.editor as mp
@@ -48,15 +48,21 @@ def get_tor_session():
     }
     return session
 
-# Function to log Tor IP
-def log_tor_ip():
+# Function to log and return Tor IP
+def get_tor_ip():
     try:
         session = get_tor_session()
         response = session.get("https://check.torproject.org/api/ip")
         tor_ip = response.json()
         logging.info(f"Current Tor IP: {tor_ip}")
+        return tor_ip
     except Exception as e:
         logging.error(f"Failed to fetch Tor IP: {e}")
+        return {"error": str(e)}
+
+@app.route("/check-tor", methods=["GET"])
+def check_tor():
+    return jsonify({"Tor_IP": get_tor_ip()})
 
 log_tor_ip()
 
@@ -71,11 +77,17 @@ def is_valid_instagram_url(url):
     return bool(re.match(r"https?://(www\\.)?instagram\\.com/reel/[^\\s/]+", url))
 
 ### ---- FUNCTION: Download Instagram Reel Using Tor ---- ###
-def download_reel(url):
+@app.route("/download/reel", methods=["GET"])
+@limiter.limit("100/minute")
+def download_instagram_reel():
     try:
+        url = request.args.get("url")
+        if not url or not is_valid_instagram_url(url):
+            return jsonify({"error": "Invalid or missing Instagram URL"})
+
         shortcode = extract_shortcode_from_url(url)
         if not shortcode:
-            return {"error": "Invalid Instagram Reel URL format"}
+            return jsonify({"error": "Invalid Instagram Reel URL format"})
 
         print(f"Processing Reel: {shortcode}")
         
@@ -87,7 +99,7 @@ def download_reel(url):
 
         video_files = glob.glob(os.path.join(shortcode, "*.mp4"))
         if not video_files:
-            return {"error": "No MP4 file found."}
+            return jsonify({"error": "No MP4 file found."})
 
         video_file = video_files[0]
 
@@ -111,40 +123,15 @@ def download_reel(url):
 
         executor.submit(delayed_delete, static_folder, shortcode)
 
-        return {
+        return jsonify({
             "status": "success",
             "caption": caption,
             "hashtags": hashtags,
             "video_download_url": f"{RENDER_EXTERNAL_URL}/static/{shortcode}/{shortcode}.mp4",
             "mp3_download_url": f"{RENDER_EXTERNAL_URL}/static/{shortcode}/audio.mp3",
-        }
+        })
     except Exception as e:
-        return {"error": str(e)}
-
-### ---- FUNCTION: Convert Video to MP3 ---- ###
-def convert_video_to_mp3(video_path):
-    try:
-        video = mp.VideoFileClip(video_path)
-        mp3_audio_path = os.path.join(os.path.dirname(video_path), "audio.mp3")
-        video.audio.write_audiofile(mp3_audio_path, codec="mp3")
-        video.close()
-        return mp3_audio_path
-    except Exception as e:
-        return {"error": f"MP3 extraction failed: {str(e)}"}
-
-### ---- FUNCTION: Delayed Deletion ---- ###
-def delayed_delete(static_folder, shortcode):
-    time.sleep(240)
-    delete_folder(static_folder)
-    delete_folder(shortcode)
-
-def delete_folder(folder_path):
-    try:
-        if os.path.exists(folder_path):
-            shutil.rmtree(folder_path)
-            print(f"Deleted folder: {folder_path}")
-    except Exception as e:
-        print(f"Error deleting folder {folder_path}: {str(e)}")
+        return jsonify({"error": str(e)})
 
 ### ---- FLASK API ROUTES ---- ###
 @app.route("/")
