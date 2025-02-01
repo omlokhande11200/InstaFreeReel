@@ -1,9 +1,14 @@
 services:
   - type: web
     name: InstaFreeReel
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "tor & python app.py"
+    env: docker  # Use Docker to install Tor
+    repo: https://github.com/omlokhande11200/InstaFreeReel
+    dockerfilePath: Dockerfile
+    plan: free
     envVars:
       - key: PORT
-        value: 5000
+        value: "5000"
+      - key: API_KEY
+        value: "your-secret-api-key"
+      - key: RENDER_EXTERNAL_URL
+        value: "https://instafree.onrender.com"
