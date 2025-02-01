@@ -5,9 +5,10 @@ import moviepy.editor as mp
 import re
 import shutil
 import requests
+import logging
 from stem import Signal
 from stem.control import Controller
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
@@ -17,9 +18,7 @@ import time
 
 # Load environment variables
 load_dotenv()
-API_KEY = os.getenv("API_KEY", "default-api-key")
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "http://127.0.0.1:5000")
-VERSAL_URL = os.getenv("VERSAL_URL", "http://127.0.0.1:5000")
 
 # Flask app initialization
 app = Flask(__name__)
@@ -48,6 +47,18 @@ def get_tor_session():
         'https': 'socks5h://127.0.0.1:9050'
     }
     return session
+
+# Function to log Tor IP
+def log_tor_ip():
+    try:
+        session = get_tor_session()
+        response = session.get("https://check.torproject.org/api/ip")
+        tor_ip = response.json()
+        logging.info(f"Current Tor IP: {tor_ip}")
+    except Exception as e:
+        logging.error(f"Failed to fetch Tor IP: {e}")
+
+log_tor_ip()
 
 ### ---- FUNCTION: Extract Shortcode from URL ---- ###
 def extract_shortcode_from_url(url):
@@ -139,26 +150,6 @@ def delete_folder(folder_path):
 @app.route("/")
 def home():
     return jsonify({"message": "Instagram Bot API is Running!"})
-
-@app.route("/download/reel", methods=["GET"])
-@limiter.limit("100/minute")
-def download_instagram_reel():
-    try:
-        api_key = request.headers.get("X-API-Key")
-        if api_key != API_KEY:
-            abort(401, "Unauthorized: Invalid API Key")
-        
-        url = request.args.get("url")
-        if not url or not is_valid_instagram_url(url):
-            return jsonify({"error": "Invalid or missing Instagram URL"})
-
-        result = download_reel(url)
-        if "error" in result and result["error"]:
-            return jsonify({"error": result["error"]})
-
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": f"Unexpected server error: {str(e)}"})
 
 if __name__ == "__main__":
     app.run(debug=False, use_reloader=False)
