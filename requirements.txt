@@ -5,3 +5,6 @@ instaloader
 moviepy==1.0.3
 python-dotenv==1.0.1
 gunicorn
+requests
+requests[socks]
+stem
