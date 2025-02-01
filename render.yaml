@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: InstaFreeReel
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "tor & python app.py"
+    envVars:
+      - key: PORT
+        value: 5000
